@@ -9,16 +9,14 @@ export const findNumInRange = (value: number): number[] => {
   };
   const currentRange = getRange(value, 1);
 
-  const isDivideByTaret = (num: number, rangeNum: number[] = []): boolean => {
+  const isDivideByTarget = (num: number, rangeNum: number[] = []): boolean => {
     return rangeNum.some((rValue) => num % rValue === 0);
   };
 
-  const result = currentRange.reduce<number[]>((acc, item) => {
-    if (isDivideByTaret(item, TARGET_RANGE)) {
+  return currentRange.reduce<number[]>((acc, item) => {
+    if (isDivideByTarget(item, TARGET_RANGE)) {
       return [...acc, item];
     }
     return acc;
   }, []);
-
-  return result;
 };
