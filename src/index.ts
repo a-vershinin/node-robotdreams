@@ -1,5 +1,5 @@
 // Utils
-import { sum, checkNumberIsPalindrome } from "./utils";
+import { sum, findNumInRange, checkNumberIsPalindrome } from "./utils";
 
 main();
 
@@ -10,4 +10,5 @@ function main() {
 
   console.log("checkNumberIsPalindrome(212) -> ", checkNumberIsPalindrome(212));
   console.log("checkNumberIsPalindrome(321) -> ", checkNumberIsPalindrome(321));
+  console.log("findNumInRange(30)", findNumInRange(30));
 }
