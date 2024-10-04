@@ -25,3 +25,18 @@ export const checkNumberIsPalindrome = (value: number): boolean => {
   const reverstedStr = str.split("").reverse().join("");
   return str === reverstedStr;
 };
+
+export const recursiveIteration = (array: number[] = [], index = 0): void => {
+  /*
+    const arr = [1, 2, 3, 4, 5];
+    for (let i = 0; i < arr.length; i++) {
+        console.log(arr[i]);
+    }
+  */
+  if (index === array.length) {
+    console.log("[recursiveIteration]: finished");
+    return;
+  }
+  console.log("[recursiveIteration] item:", array[index]);
+  return recursiveIteration(array, (index += 1));
+};
