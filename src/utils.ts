@@ -34,3 +34,9 @@ export const delay = (ms: number = 500): Promise<string> => {
     }, ms);
   });
 };
+
+export const double = (value: number, count: number = 2): Promise<number> => {
+  return new Promise((resolve) => {
+    return resolve(value * count);
+  });
+};
