@@ -20,10 +20,25 @@ export const findNumInRange = (value: number): number[] => {
     return acc;
   }, []);
 };
+
 export const checkNumberIsPalindrome = (value: number): boolean => {
   const str = value.toString();
   const reverstedStr = str.split("").reverse().join("");
   return str === reverstedStr;
+};
+
+export const delay = (ms: number = 500): Promise<string> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      return resolve("success");
+    }, ms);
+  });
+};
+
+export const double = (value: number, count: number = 2): Promise<number> => {
+  return new Promise((resolve) => {
+    return resolve(value * count);
+  });
 };
 
 export const recursiveIteration = (array: number[] = [], index = 0): void => {
