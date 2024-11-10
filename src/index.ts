@@ -6,6 +6,7 @@ import {
   double,
   delay,
   recursiveIteration,
+  nestedReactiveFlows,
 } from "./utils";
 
 main();
@@ -28,4 +29,6 @@ function main() {
     });
 
   recursiveIteration([1, 2, 3, 4, 5]);
+
+  nestedReactiveFlows();
 }

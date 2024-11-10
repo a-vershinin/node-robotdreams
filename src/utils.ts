@@ -1,3 +1,6 @@
+import { of, interval } from "rxjs";
+import { mergeMap, take } from "rxjs/operators";
+
 export const sum = (a: number, b: number) => {
   return a + b;
 };
@@ -54,4 +57,19 @@ export const recursiveIteration = (array: number[] = [], index = 0): void => {
   }
   console.log("[recursiveIteration] item:", array[index]);
   return recursiveIteration(array, (index += 1));
+};
+
+export const nestedReactiveFlows = () => {
+  const firstObservable = of("First flow");
+  const secondObservable = () => interval(1000).pipe(take(3));
+
+  firstObservable
+    .pipe(
+      mergeMap(() => {
+        return secondObservable();
+      }),
+    )
+    .subscribe((data) => {
+      console.log("Nested subscribe:", data);
+    });
 };
