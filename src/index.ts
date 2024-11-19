@@ -7,6 +7,7 @@ import {
   delay,
   recursiveIteration,
   nestedReactiveFlows,
+  asyncWorkWithGenerators,
 } from "./utils";
 
 main();
@@ -31,4 +32,6 @@ function main() {
   recursiveIteration([1, 2, 3, 4, 5]);
 
   nestedReactiveFlows();
+
+  asyncWorkWithGenerators();
 }
