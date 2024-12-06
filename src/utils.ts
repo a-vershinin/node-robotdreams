@@ -73,3 +73,37 @@ export const nestedReactiveFlows = () => {
       console.log("Nested subscribe:", data);
     });
 };
+
+export const asyncWorkWithGenerators = () => {
+  function* generator() {
+    yield 1;
+    yield 2;
+    yield 3;
+  }
+  const generator1 = generator();
+  console.log(generator1.next().value);
+  console.log(generator1.next().value);
+  console.log(generator1.next().value);
+
+  console.log("createGenerator->:");
+  function createGenerator() {
+    let count = 0;
+
+    return function* soneName() {
+      if (count <= 3) {
+        if (count === 3) {
+          yield void 0;
+        }
+        yield (count += 1);
+      } else {
+        yield void 0;
+      }
+    };
+  }
+
+  const generator2 = createGenerator();
+  console.log(generator2().next().value); // 1
+  console.log(generator2().next().value); // 2
+  console.log(generator2().next().value); // 3
+  console.log(generator2().next().value); // undefined
+};
