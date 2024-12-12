@@ -7,10 +7,10 @@ import { TokensService } from "./services/tokens.service";
 
 @Module({
   imports: [
-    forwardRef(() => UsersModule),
     JwtModule.register({
       secret: process.env.JWT_SECRET || "secret",
     }),
+    forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],
   providers: [AuthService, TokensService],

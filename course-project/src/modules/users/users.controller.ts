@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Post, Delete, Body, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { UsersService } from "./users.service";
-import { JwtAuthGuard } from "../auth/guards/oauth2.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt.guard";
 
+@ApiTags("users")
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -22,6 +24,7 @@ export class UsersController {
   }
 
   @Delete(":id")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async deleteOne(@Param("id") userId: number) {
     await this.usersService.deleteUser(userId);

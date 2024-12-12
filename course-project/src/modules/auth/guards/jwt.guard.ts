@@ -25,7 +25,7 @@ export class JwtAuthGuard {
 
     const refreshToken = request.body.refresh_token;
     if (!refreshToken) {
-      throw new UnauthorizedException("Missing tokens");
+      throw new UnauthorizedException("Missing refresh tokens");
     }
     return this.validateRefreshToken(refreshToken, request);
   }

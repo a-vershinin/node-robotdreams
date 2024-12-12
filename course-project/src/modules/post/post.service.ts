@@ -17,7 +17,7 @@ export class PostService {
     @Inject(CACHE_MANAGER) private cacheService: Cache,
   ) {}
 
-  async getAllPosts(): Promise<StoredPost[]> {
+  async getAllPosts(_values: { userId: number }): Promise<StoredPost[]> {
     const cacheKey = "user_posts:all";
     const cachedData = await this.cacheService.get<StoredPost[]>(cacheKey);
     if (cachedData) {
@@ -63,6 +63,7 @@ export class PostService {
     }
 
     const rowPost = storageResult.rows[0];
+    await this.cacheService.del("user_posts:all");
     const cacheKey = `user_posts:${rowPost.id}`;
     await this.cacheService.set(cacheKey, rowPost, 2 * 60);
     return rowPost;
@@ -85,7 +86,7 @@ export class PostService {
     return rowPost;
   }
 
-  async deletePost(id: number): Promise<{ message: string }> {
+  async deletePost(id: number): Promise<void> {
     await this.findPostById(id);
 
     const storageResult = await this.pool.query("DELETE FROM posts WHERE id = $1", [id]);
@@ -95,6 +96,5 @@ export class PostService {
 
     const cacheKey = `user_posts:${id}`;
     await this.cacheService.del(cacheKey);
-    return { message: `Post with id ${id} deleted successfully` };
   }
 }

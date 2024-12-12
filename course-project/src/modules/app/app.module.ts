@@ -1,11 +1,11 @@
 import { Module } from "@nestjs/common";
-import { DatabaseModule } from "../database/database.module";
+import { ConfigModule } from "@nestjs/config";
+import { DatabaseModule } from "../../core/database/database.module";
 import { AuthModule } from "../auth/auth.module";
 import { UsersModule } from "../users/users.module";
 import { PostModule } from "../post/post.module";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
-import { ConfigModule } from "@nestjs/config";
 
 @Module({
   imports: [
