@@ -14,7 +14,7 @@ export class AuthService {
     private readonly tokensService: TokensService,
   ) {}
 
-  async login(values: { username: string; password: string }) {
+  public async login(values: { username: string; password: string }) {
     const user = await this.validateUser(values.username, values.password);
     if (!user) {
       throw new UnauthorizedException("Invalid username or password");
@@ -31,7 +31,7 @@ export class AuthService {
     };
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string }> {
+  public async refreshAccessToken(refreshToken: string): Promise<{ access_token: string }> {
     const storedToken = await this.tokensService.findRefreshToken(refreshToken);
 
     if (!storedToken) {
@@ -67,7 +67,7 @@ export class AuthService {
     return user;
   }
 
-  async validateUser(
+  private async validateUser(
     username: string,
     password: string,
   ): Promise<{ id: number; username: string; password: string } | null> {
@@ -81,5 +81,52 @@ export class AuthService {
       return null;
     }
     return user;
+  }
+
+  public async validateAccessToken(
+    token: string,
+    request: { user: TokenInfo | null },
+  ): Promise<boolean> {
+    try {
+      const decodedToken = await this.jwtService.verifyAsync<TokenInfo>(token, {
+        secret: process.env.JWT_SECRET,
+      });
+
+      const storedToken = await this.tokensService.findAccessToken(token);
+      if (!storedToken) {
+        throw new UnauthorizedException("Access token not found");
+      }
+
+      request.user = decodedToken;
+      return true;
+    } catch (err) {
+      throw new UnauthorizedException("Invalid or expired access token");
+    }
+  }
+
+  public async validateRefreshToken(token: string, request: any): Promise<boolean> {
+    try {
+      const decoded = await this.jwtService.verifyAsync<TokenInfo>(token, {
+        secret: process.env.JWT_SECRET,
+      });
+      const storedToken = await this.tokensService.findRefreshToken(token);
+
+      if (!storedToken) {
+        throw new UnauthorizedException("Refresh token not found");
+      }
+
+      const newAccessToken = await this.jwtService.signAsync(
+        { username: decoded.username, sub: decoded.sub },
+        { expiresIn: "15m", secret: process.env.JWT_SECRET },
+      );
+
+      await this.tokensService.saveTokens(decoded.sub, newAccessToken, token);
+
+      request.user = decoded;
+      request.newAccessToken = newAccessToken;
+      return true;
+    } catch (err) {
+      throw new UnauthorizedException("Invalid or expired refresh token");
+    }
   }
 }

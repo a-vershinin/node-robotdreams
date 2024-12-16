@@ -1,6 +1,7 @@
 import { Module, Global } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Pool } from "pg";
+import { PostRepository } from "./repositories/post.repository";
 
 @Global()
 @Module({
@@ -24,7 +25,8 @@ import { Pool } from "pg";
         });
       },
     },
+    PostRepository,
   ],
-  exports: ["DATABASE_POOL"],
+  exports: ["DATABASE_POOL", PostRepository],
 })
 export class DatabaseModule {}

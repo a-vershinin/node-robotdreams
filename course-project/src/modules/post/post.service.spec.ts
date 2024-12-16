@@ -1,21 +1,26 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException } from "@nestjs/common";
-import { Pool } from "pg";
 import { PostService } from "./post.service";
 import { CacheService } from "../../core/cache/cache.service";
+import { PostRepository } from "../../core/database/repositories/post.repository";
 
 describe("PostService", () => {
   let postService: PostService;
-  let databaseService: Pool;
+
   let cacheService: CacheService;
+  let postRepository: PostRepository;
 
   const mockCacheService = {
     set: jest.fn(),
     get: jest.fn(),
     del: jest.fn(),
   };
-  const mockDatabaseService = {
-    query: jest.fn(),
+  const mockPostRepository = {
+    findAllPosts: jest.fn(),
+    createPost: jest.fn(),
+    findPostById: jest.fn(),
+    updatePost: jest.fn(),
+    deletePost: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -23,12 +28,12 @@ describe("PostService", () => {
       providers: [
         PostService,
         { provide: CacheService, useValue: mockCacheService },
-        { provide: "DATABASE_POOL", useValue: mockDatabaseService },
+        { provide: PostRepository, useValue: mockPostRepository },
       ],
     }).compile();
     postService = module.get<PostService>(PostService);
-    databaseService = module.get<Pool>("DATABASE_POOL");
     cacheService = module.get<CacheService>(CacheService);
+    postRepository = module.get<PostRepository>(PostRepository);
   });
 
   afterEach(() => {
@@ -45,16 +50,17 @@ describe("PostService", () => {
       const mockResultData = [{ id: 1, user_id: 1, content: "content" }];
 
       cacheService.get = jest.fn().mockResolvedValueOnce(null);
-      databaseService.query = jest.fn().mockResolvedValueOnce({ rows: mockResultData });
+      postRepository.findAllPosts = jest.fn().mockResolvedValueOnce(mockResultData);
       const cacheServiceGetSpy = jest.spyOn(cacheService, "get");
       const cacheServiceSetSpy = jest.spyOn(cacheService, "set");
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      const postRepositorySpy = jest.spyOn(postRepository, "findAllPosts");
 
       const resultFull = await postService.findAllPosts(mockParams);
 
       expect(cacheServiceGetSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceGetSpy).toHaveBeenCalledWith("user_posts:all");
-      expect(databaseServiceSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositorySpy).toHaveBeenCalledTimes(1);
+      expect(postRepositorySpy).toHaveBeenCalledWith(mockParams);
       expect(cacheServiceSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceSetSpy).toHaveBeenCalledWith("user_posts:all", mockResultData, 120);
       expect(resultFull).toStrictEqual(mockResultData);
@@ -79,15 +85,16 @@ describe("PostService", () => {
       const mockNewPost = { id: 1, user_id: 1, content: "some post content" };
       const cacheKey = `user_posts:${mockNewPost.id}`;
 
-      databaseService.query = jest.fn().mockResolvedValueOnce({ rows: [mockNewPost] });
+      postRepository.createPost = jest.fn().mockResolvedValueOnce(mockNewPost);
       cacheService.del = jest.fn().mockResolvedValueOnce(null);
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      const postRepositorySpy = jest.spyOn(postRepository, "createPost");
       const cacheServiceDeleteSpy = jest.spyOn(cacheService, "del");
       const cacheServiceSetSpy = jest.spyOn(cacheService, "set");
 
       const result = await postService.createPost(mockBody);
 
-      expect(databaseServiceSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositorySpy).toHaveBeenCalledTimes(1);
+      expect(postRepositorySpy).toHaveBeenCalledWith(mockBody);
       expect(cacheServiceDeleteSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceDeleteSpy).toHaveBeenCalledWith("user_posts:all");
       expect(cacheServiceSetSpy).toHaveBeenCalledTimes(1);
@@ -103,8 +110,8 @@ describe("PostService", () => {
       const cacheKey = `user_posts:${mockPost.id}`;
 
       cacheService.get = jest.fn().mockResolvedValueOnce(null);
-      databaseService.query = jest.fn().mockResolvedValueOnce({ rows: [mockPost] });
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      postRepository.findPostById = jest.fn().mockResolvedValueOnce(mockPost);
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
       const cacheServiceGetSpy = jest.spyOn(cacheService, "get");
       const cacheServiceSetSpy = jest.spyOn(cacheService, "set");
 
@@ -112,7 +119,8 @@ describe("PostService", () => {
 
       expect(cacheServiceGetSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceGetSpy).toHaveBeenCalledWith(cacheKey);
-      expect(databaseServiceSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledWith(mockParams.userId);
       expect(cacheServiceSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceSetSpy).toHaveBeenCalledWith(cacheKey, mockPost, 5 * 1000);
       expect(result).toStrictEqual(mockPost);
@@ -124,12 +132,12 @@ describe("PostService", () => {
       const cacheKey = `user_posts:${mockParams.userId}`;
 
       cacheService.get = jest.fn().mockResolvedValueOnce(mockPost);
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
       const cacheServiceGetSpy = jest.spyOn(cacheService, "get");
 
       const result = await postService.findPostById(mockParams.userId);
 
-      expect(databaseServiceSpy).toHaveBeenCalledTimes(0);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheServiceGetSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceGetSpy).toHaveBeenCalledWith(cacheKey);
       expect(result).toStrictEqual(mockPost);
@@ -141,8 +149,8 @@ describe("PostService", () => {
       const cacheKey = `user_posts:${mockPost.id}`;
 
       cacheService.get = jest.fn().mockResolvedValueOnce(null);
-      databaseService.query = jest.fn().mockResolvedValueOnce({ rows: [] });
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      postRepository.findPostById = jest.fn().mockResolvedValueOnce(null);
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
       const cacheServiceGetSpy = jest.spyOn(cacheService, "get");
       const cacheServiceSetSpy = jest.spyOn(cacheService, "set");
 
@@ -151,7 +159,8 @@ describe("PostService", () => {
       } catch (error) {
         expect(cacheServiceGetSpy).toHaveBeenCalledTimes(1);
         expect(cacheServiceGetSpy).toHaveBeenCalledWith(cacheKey);
-        expect(databaseServiceSpy).toHaveBeenCalledTimes(1);
+        expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(1);
+        expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledWith(mockParams.userId);
         expect(cacheServiceSetSpy).toHaveBeenCalledTimes(0);
         expect(error).toBeInstanceOf(NotFoundException);
       }
@@ -173,16 +182,21 @@ describe("PostService", () => {
       };
       const cacheKey = `user_posts:${mockUpdatedPost.id}`;
 
-      databaseService.query = jest
-        .fn()
-        .mockResolvedValueOnce({ rows: [mockSelectedPost] })
-        .mockResolvedValueOnce({ rows: [mockUpdatedPost] });
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      postRepository.findPostById = jest.fn().mockResolvedValueOnce(mockSelectedPost);
+      postRepository.updatePost = jest.fn().mockResolvedValueOnce(mockUpdatedPost);
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
+      const postRepositoryUpdatePostSpy = jest.spyOn(postRepository, "updatePost");
       const cacheServiceSetSpy = jest.spyOn(cacheService, "set");
 
       const result = await postService.updatePost(mockParams.userId, mockParams.values);
 
-      expect(databaseServiceSpy).toHaveBeenCalledTimes(2);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledWith(mockParams.userId);
+      expect(postRepositoryUpdatePostSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositoryUpdatePostSpy).toHaveBeenCalledWith(
+        mockParams.userId,
+        mockParams.values,
+      );
       expect(cacheServiceSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceSetSpy).toHaveBeenCalledWith(cacheKey, mockUpdatedPost, 2 * 60);
       expect(result).toStrictEqual(mockUpdatedPost);
@@ -190,15 +204,15 @@ describe("PostService", () => {
 
     it("should not found post for update", async () => {
       const mockParams = { userId: 1, values: { content: "new updated content" } };
-      databaseService.query = jest.fn().mockResolvedValueOnce({ rows: [] });
-
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      postRepository.findPostById = jest.fn().mockResolvedValueOnce(null);
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
       const cacheServiceSetSpy = jest.spyOn(cacheService, "set");
 
       try {
         await postService.updatePost(mockParams.userId, mockParams.values);
       } catch (error) {
-        expect(databaseServiceSpy).toHaveBeenCalledTimes(1);
+        expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(1);
+        expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledWith(mockParams.userId);
         expect(cacheServiceSetSpy).toHaveBeenCalledTimes(0);
         expect(error).toBeInstanceOf(NotFoundException);
       }
@@ -215,31 +229,34 @@ describe("PostService", () => {
       };
       const cacheKey = `user_posts:${mockSelectedPost.id}`;
 
-      databaseService.query = jest
-        .fn()
-        .mockResolvedValueOnce({ rows: [mockSelectedPost] })
-        .mockResolvedValueOnce(null);
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      postRepository.findPostById = jest.fn().mockResolvedValueOnce(mockSelectedPost);
+      postRepository.updatePost = jest.fn().mockResolvedValueOnce(null);
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
+      const postRepositoryDeletePostSpy = jest.spyOn(postRepository, "deletePost");
       const cacheServiceDelSpy = jest.spyOn(cacheService, "del");
 
       await postService.deletePost(mockParams.userId);
 
-      expect(databaseServiceSpy).toHaveBeenCalledTimes(2);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledWith(mockParams.userId);
+      expect(postRepositoryDeletePostSpy).toHaveBeenCalledTimes(1);
+      expect(postRepositoryDeletePostSpy).toHaveBeenCalledWith(mockParams.userId);
       expect(cacheServiceDelSpy).toHaveBeenCalledTimes(1);
       expect(cacheServiceDelSpy).toHaveBeenCalledWith(cacheKey);
     });
 
     it("should not found post for delete", async () => {
       const mockParams = { userId: 1 };
-      databaseService.query = jest.fn().mockResolvedValueOnce({ rows: [] });
 
-      const databaseServiceSpy = jest.spyOn(databaseService, "query");
+      postRepository.findPostById = jest.fn().mockResolvedValueOnce(null);
+      const postRepositoryFindPostByIdSpy = jest.spyOn(postRepository, "findPostById");
       const cacheServiceDelSpy = jest.spyOn(cacheService, "del");
 
       try {
         await postService.deletePost(mockParams.userId);
       } catch (error) {
-        expect(databaseServiceSpy).toHaveBeenCalledTimes(1);
+        expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledTimes(1);
+        expect(postRepositoryFindPostByIdSpy).toHaveBeenCalledWith(mockParams.userId);
         expect(cacheServiceDelSpy).toHaveBeenCalledTimes(0);
         expect(error).toBeInstanceOf(NotFoundException);
       }
