@@ -1,0 +1,52 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:13
+    container_name: db-postgres
+    env_file: .env
+    # environment:
+    #   POSTGRES_USER: postgres
+    #   POSTGRES_PASSWORD: postgres
+    #   POSTGRES_DB: social-network
+    ports:
+      - "5412:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: "redis:alpine"
+    container_name: cache-redis
+    env_file: .env
+    # environment:
+    #   REDIS_HOST: localhost
+    #   REDIS_PORT: postgres
+    ports:
+      - "6379:6379"
+
+  # TODO: find why can't connect to db Error: connect ECONNREFUSED 127.0.0.1:6379
+  # api:
+  #   build: .
+  #   container_name: nestjs-api
+  #   command: npm run start:dev
+  #   env_file: .env
+  #   # environment:
+  #   #   JWT_SECRET: secret
+  #   #   DB_HOST: localhost
+  #   #   DB_PORT: 5412
+  #   #   DB_USER: postgres
+  #   #   DB_PASSWORD: postgres
+  #   #   DB_NAME: social-network
+  #   #   REDIS_HOST: localhost
+  #   #   REDIS_PORT: 6379
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - db
+  #     - redis
+  #   volumes:
+  #     - .:/app
+  #     #   - ./src:/usr/app/
+
+volumes:
+  postgres_data:
