@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  InternalServerErrorException,
-} from "@nestjs/common";
+import { Injectable, Inject, NotFoundException } from "@nestjs/common";
 import { Pool } from "pg";
 import { CacheService } from "../../core/cache/cache.service";
 
@@ -16,7 +11,7 @@ export class PostService {
     private readonly cacheService: CacheService,
   ) {}
 
-  async getAllPosts(_values: { userId: number }): Promise<StoredPost[]> {
+  async findAllPosts(_values?: { userId?: number }): Promise<StoredPost[]> {
     const cacheKey = "user_posts:all";
     const cachedData = await this.cacheService.get<StoredPost[]>(cacheKey);
     if (cachedData) {
@@ -26,12 +21,25 @@ export class PostService {
     const storageResult = await this.pool.query<StoredPost>(
       "SELECT posts.id, posts.content, posts.user_id FROM posts",
     );
-    if (storageResult.rowCount === 0) {
-      throw new InternalServerErrorException(`PostService.findPostById has some error`);
-    }
+    const storedPosts = storageResult.rows;
 
-    await this.cacheService.set(cacheKey, storageResult.rows, 2 * 60);
-    return storageResult.rows;
+    await this.cacheService.set(cacheKey, storedPosts, 2 * 60);
+    return storedPosts;
+  }
+
+  async createPost(values: { userId: number; content: string }): Promise<StoredPost> {
+    const { userId, content } = values;
+
+    const storageResult = await this.pool.query<StoredPost>(
+      "INSERT INTO posts (user_id, content) VALUES ($1, $2) RETURNING *",
+      [userId, content],
+    );
+
+    const rowPost = storageResult.rows[0];
+    await this.cacheService.del("user_posts:all");
+    const cacheKey = `user_posts:${rowPost.id}`;
+    await this.cacheService.set(cacheKey, rowPost, 2 * 60);
+    return rowPost;
   }
 
   async findPostById(id: number): Promise<StoredPost> {
@@ -55,32 +63,21 @@ export class PostService {
     return rowPost;
   }
 
-  async createPost(userId: number, content: string): Promise<StoredPost> {
-    const storageResult = await this.pool.query<StoredPost>(
-      "INSERT INTO posts (user_id, content) VALUES ($1, $2) RETURNING *",
-      [userId, content],
+  async updatePost(id: number, values: { content: string }): Promise<StoredPost> {
+    const storageSelectedPost = await this.pool.query<StoredPost>(
+      "SELECT posts.id, posts.content, posts.user_id FROM posts WHERE id = $1",
+      [id],
     );
-    if (storageResult.rowCount === 0) {
-      throw new InternalServerErrorException(`PostService.createPost has some error`);
+    const selectedPost = storageSelectedPost.rows[0];
+    if (!selectedPost) {
+      throw new NotFoundException("Post not found");
     }
-
-    const rowPost = storageResult.rows[0];
-    await this.cacheService.del("user_posts:all");
-    const cacheKey = `user_posts:${rowPost.id}`;
-    await this.cacheService.set(cacheKey, rowPost, 2 * 60);
-    return rowPost;
-  }
-
-  async updatePost(id: number, content: string): Promise<StoredPost> {
-    await this.findPostById(id);
 
     const storageResult = await this.pool.query<StoredPost>(
       "UPDATE posts SET content = $1 WHERE id = $2 RETURNING *",
-      [content, id],
+      [values.content, selectedPost.id],
     );
-    if (storageResult.rowCount === 0) {
-      throw new InternalServerErrorException(`PostService.updatePost has some error`);
-    }
+
     const rowPost = storageResult.rows[0];
 
     const cacheKey = `user_posts:${rowPost.id}`;
@@ -89,12 +86,16 @@ export class PostService {
   }
 
   async deletePost(id: number): Promise<void> {
-    await this.findPostById(id);
-
-    const storageResult = await this.pool.query("DELETE FROM posts WHERE id = $1", [id]);
-    if (storageResult.rowCount === 0) {
-      throw new InternalServerErrorException(`PostService.deletePost has some error`);
+    const storageSelectedPost = await this.pool.query<StoredPost>(
+      "SELECT posts.id, posts.content, posts.user_id FROM posts WHERE id = $1",
+      [id],
+    );
+    const selectedPost = storageSelectedPost.rows[0];
+    if (!selectedPost) {
+      throw new NotFoundException("Post not found");
     }
+
+    await this.pool.query("DELETE FROM posts WHERE id = $1", [selectedPost.id]);
 
     const cacheKey = `user_posts:${id}`;
     await this.cacheService.del(cacheKey);

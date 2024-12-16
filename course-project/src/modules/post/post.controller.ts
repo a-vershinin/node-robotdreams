@@ -21,6 +21,7 @@ import {
   ApiNotFoundResponse,
   ApiQuery,
   ApiBody,
+  ApiOperation,
 } from "@nestjs/swagger";
 import { PostService } from "./post.service";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";
@@ -71,16 +72,39 @@ export class PostController {
     description: "filter by some user",
     required: false,
   })
+  @ApiOperation({
+    summary: "Fetch list of posts",
+  })
   @ApiOkResponse({
     description: "The posts successfully returned.",
     type: [PostDto],
   })
   async getAllPosts(@Query("userId") userId?: number): Promise<CreatePostDtoRes[]> {
-    return this.postService.getAllPosts({ userId });
+    return this.postService.findAllPosts({ userId });
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiBody({
+    description: "Structure for post object",
+    type: CreatePostDtoReq,
+  })
+  @ApiOperation({
+    summary: "Create single post",
+  })
+  @ApiCreatedResponse({
+    description: "The post successfully created.",
+    type: CreatePostDtoRes,
+  })
+  async createPost(@Body() body: CreatePostDtoReq): Promise<PostEntity> {
+    return await this.postService.createPost({ userId: body.userId, content: body.content });
   }
 
   @Get(":postId")
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Fetch single post by post id",
+  })
   @ApiOkResponse({ description: "The post successfully returned." })
   @ApiNotFoundResponse({
     description: "The post not found.",
@@ -91,33 +115,25 @@ export class PostController {
     },
   })
   async findPost(@Param("postId") id: number): Promise<PostEntity> {
-    return this.postService.findPostById(id);
-  }
-
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiBody({
-    description: "Structure for post object",
-    type: CreatePostDtoReq,
-  })
-  @ApiCreatedResponse({
-    description: "The post successfully created.",
-    type: CreatePostDtoRes,
-  })
-  async createPost(@Body() body: CreatePostDtoReq): Promise<PostEntity> {
-    return this.postService.createPost(body.userId, body.content);
+    return await this.postService.findPostById(id);
   }
 
   @Put(":postId")
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Update single post by post id",
+  })
   @ApiOkResponse({ description: "The post successfully updated.", type: CreatePostDtoRes })
   @ApiNotFoundResponse({ description: "The post not found." })
   async updatePost(@Param("postId") id: number, @Body() body: UpdatePostDto): Promise<PostEntity> {
-    return this.postService.updatePost(id, body.content);
+    return await this.postService.updatePost(id, body);
   }
 
   @Delete(":postId")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Remove single post by post id",
+  })
   @ApiNoContentResponse({ description: "The post successfully deleted." })
   async deletePost(@Param("postId") id: number): Promise<void> {
     await this.postService.deletePost(id);
