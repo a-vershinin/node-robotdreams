@@ -1,4 +1,5 @@
 import { Module, Global } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Pool } from "pg";
 
 @Global()
@@ -6,13 +7,20 @@ import { Pool } from "pg";
   providers: [
     {
       provide: "DATABASE_POOL",
-      useFactory: () => {
+      inject: [ConfigService],
+      useFactory: (_configService: ConfigService) => {
+        const dbHost = _configService.get<string>("DB_HOST");
+        const dbPort = _configService.get<string>("DB_PORT");
+        const dbUser = _configService.get<string>("DB_USER");
+        const dbPassword = _configService.get<string>("DB_PASSWORD");
+        const dbName = _configService.get<string>("DB_NAME");
+
         return new Pool({
-          host: process.env.DB_HOST || "localhost",
-          port: parseInt(process.env.DB_PORT, 10) || 5412,
-          user: process.env.DB_USER || "postgres",
-          password: process.env.DB_PASSWORD || "postgres",
-          database: process.env.DB_NAME || "social-network",
+          host: dbHost || "localhost",
+          port: parseInt(dbPort, 10) || 5412,
+          user: dbUser || "postgres",
+          password: dbPassword || "postgres",
+          database: dbName || "db-name",
         });
       },
     },

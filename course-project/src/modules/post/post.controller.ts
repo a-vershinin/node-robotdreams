@@ -90,7 +90,7 @@ export class PostController {
       statusCode: 400,
     },
   })
-  async findPost(@Param("id") id: number): Promise<PostEntity> {
+  async findPost(@Param("postId") id: number): Promise<PostEntity> {
     return this.postService.findPostById(id);
   }
 
@@ -112,14 +112,14 @@ export class PostController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: "The post successfully updated.", type: CreatePostDtoRes })
   @ApiNotFoundResponse({ description: "The post not found." })
-  async updatePost(@Param("id") id: number, @Body() body: UpdatePostDto): Promise<PostEntity> {
+  async updatePost(@Param("postId") id: number, @Body() body: UpdatePostDto): Promise<PostEntity> {
     return this.postService.updatePost(id, body.content);
   }
 
   @Delete(":postId")
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: "The post successfully deleted." })
-  async deletePost(@Param("id") id: number): Promise<void> {
+  async deletePost(@Param("postId") id: number): Promise<void> {
     await this.postService.deletePost(id);
   }
 }

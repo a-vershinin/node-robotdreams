@@ -5,8 +5,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { Pool } from "pg";
-import { Cache } from "cache-manager";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { CacheService } from "../../core/cache/cache.service";
 
 type StoredPost = { id: number; content: string; user_id: number };
 
@@ -14,7 +13,7 @@ type StoredPost = { id: number; content: string; user_id: number };
 export class PostService {
   constructor(
     @Inject("DATABASE_POOL") private readonly pool: Pool,
-    @Inject(CACHE_MANAGER) private cacheService: Cache,
+    private readonly cacheService: CacheService,
   ) {}
 
   async getAllPosts(_values: { userId: number }): Promise<StoredPost[]> {
@@ -24,7 +23,9 @@ export class PostService {
       return cachedData;
     }
 
-    const storageResult = await this.pool.query<StoredPost>("SELECT * FROM posts");
+    const storageResult = await this.pool.query<StoredPost>(
+      "SELECT posts.id, posts.content, posts.user_id FROM posts",
+    );
     if (storageResult.rowCount === 0) {
       throw new InternalServerErrorException(`PostService.findPostById has some error`);
     }
@@ -41,9 +42,10 @@ export class PostService {
       return cachedData;
     }
 
-    const storageResult = await this.pool.query<StoredPost>("SELECT * FROM posts WHERE id = $1", [
-      id,
-    ]);
+    const storageResult = await this.pool.query<StoredPost>(
+      "SELECT posts.id, posts.content, posts.user_id FROM posts WHERE id = $1",
+      [id],
+    );
 
     const rowPost = storageResult.rows[0];
     if (!rowPost) {
